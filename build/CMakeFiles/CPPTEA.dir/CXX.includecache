@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/root/Documents/GitHub/CPP_TEA/main.cpp
+iostream
+-
+tea.h
+C:/Users/root/Documents/GitHub/CPP_TEA/tea.h
+string
+-
+
+C:/Users/root/Documents/GitHub/CPP_TEA/tea.h
+inttypes.h
+-
+initializer_list
+-
+string
+-
+

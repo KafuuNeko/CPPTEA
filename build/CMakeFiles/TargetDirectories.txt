@@ -1,0 +1,3 @@
+C:/Users/root/Documents/GitHub/CPP_TEA/build/CMakeFiles/CPPTEA.dir
+C:/Users/root/Documents/GitHub/CPP_TEA/build/CMakeFiles/edit_cache.dir
+C:/Users/root/Documents/GitHub/CPP_TEA/build/CMakeFiles/rebuild_cache.dir
