@@ -6,15 +6,15 @@
 
 #IncludeRegexTransform: 
 
-C:/Users/root/Documents/GitHub/CPP_TEA/main.cpp
+C:/Users/root/Documents/GitHub/CPPTEA/main.cpp
 iostream
 -
 tea.h
-C:/Users/root/Documents/GitHub/CPP_TEA/tea.h
+C:/Users/root/Documents/GitHub/CPPTEA/tea.h
 string
 -
 
-C:/Users/root/Documents/GitHub/CPP_TEA/tea.h
+C:/Users/root/Documents/GitHub/CPPTEA/tea.h
 inttypes.h
 -
 initializer_list

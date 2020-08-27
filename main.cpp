@@ -22,7 +22,7 @@ inline void print(const tea::Bytes &bytes)
 
 int main()
 {
-    while(true)
+    //while(true)
     {
 
     tea::Key key("123456789");

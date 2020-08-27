@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "C:/Users/root/Documents/GitHub/CPP_TEA/main.cpp" "C:/Users/root/Documents/GitHub/CPP_TEA/build/CMakeFiles/CPPTEA.dir/main.cpp.obj"
+  "C:/Users/root/Documents/GitHub/CPPTEA/main.cpp" "C:/Users/root/Documents/GitHub/CPPTEA/build/CMakeFiles/CPPTEA.dir/main.cpp.obj"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
