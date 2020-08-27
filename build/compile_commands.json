@@ -1,7 +1,0 @@
-[
-{
-  "directory": "C:/Users/root/Documents/GitHub/CPPTEA/build",
-  "command": "C:\\mingw64\\bin\\g++.exe    -g   -std=gnu++17 -o CMakeFiles\\CPPTEA.dir\\main.cpp.obj -c C:\\Users\\root\\Documents\\GitHub\\CPPTEA\\main.cpp",
-  "file": "C:/Users/root/Documents/GitHub/CPPTEA/main.cpp"
-}
-]
