@@ -5,7 +5,7 @@
  * @author KafuuNeko
  * https://kafuu.cc/
  * gmail: kafuuneko@gmail.com
- * 
+ *
 */
 
 #include <inttypes.h>
@@ -22,7 +22,7 @@ class basic_memory {
     T **ptr_;
     size_t *size_;
     size_t *use_;
-    
+
     void free()
     {
         if( ptr_ && use_ && --(*use_) == 0)
@@ -48,7 +48,7 @@ public:
 
     basic_memory(size_t size)
         : basic_memory(new T[size], size) { }
-    
+
     basic_memory(const std::initializer_list<T> &il)
         : basic_memory(new(std::nothrow) T[il.size()], il.size()) { if(*ptr_) std::copy(il.begin(), il.end(), *ptr_); }
 
@@ -132,10 +132,10 @@ struct Key
         key_a_ = key_b_ = key_c_ = key_d_ = 0;
         for (char ch : key)
         {
-            key_a_ = key_a_ * 7 + ch;
-            key_b_ = key_b_ * 15 + ch;
-            key_c_ = key_c_ * 31 + ch;
-            key_d_ = key_d_ * 63 + ch;
+            key_a_ = key_a_ * 7 +  static_cast<uint8_t>(ch);
+            key_b_ = key_b_ * 15 + static_cast<uint8_t>(ch);
+            key_c_ = key_c_ * 31 + static_cast<uint8_t>(ch);
+            key_d_ = key_d_ * 63 + static_cast<uint8_t>(ch);
         }
     }
 
@@ -145,64 +145,90 @@ struct Key
     uint32_t key_d_;
 };
 
+inline uint64_t bytesToInt64(const Bytes &bytes, const size_t &offset)
+{
+    uint64_t result = 0;
+
+    for(size_t i = 0; i < 8; ++i)
+    {
+        result = (result << 8) + bytes.get()[offset + i];
+    }
+
+    return result;
+}
+
+inline void int64ToBytes(const uint64_t &value, const Bytes &bytes, const size_t &offset)
+{
+    for(size_t i = 0; i < 8; ++i)
+    {
+        bytes.get()[offset + 7 - i] = (value >> 8 * i) & 0xFF;
+    }
+}
+
+union Int64ToInt32{
+    uint64_t value;
+    struct {
+        uint32_t y;
+        uint32_t z;
+    };
+};
+
 /**
  * TEA加密
  * 加密固定的八个字节
- * 
+ *
  * @param   content     加密内容
- *                      
+ *
  * @param   offset      加密内容数据偏移
  *                      将对加密内容offset后的八个字节进行加密操作
- * 
+ *
  * @param   key         TEA加密密钥
- * 
+ *
  * @param   times       加密轮数，推荐32轮加密
- * 
+ *
  * @param   result      加密结果，需传入固定八字节的Bytes
 */
 static void encrypt(const Bytes &content, const size_t &offset, const Key &key, const uint8_t &times, Bytes &result)
 {
-    uint64_t temp = *reinterpret_cast<const uint64_t *>(content.get() + offset);
+    Int64ToInt32 temp;
+    temp.value = bytesToInt64(content, offset);
 
-    int32_t y = reinterpret_cast<int32_t*>(&temp)[0], 
-            z = reinterpret_cast<int32_t*>(&temp)[1], 
-            sum = 0;
+    int32_t y = temp.y, z = temp.z, sum = 0;
 
-    for (uint8_t i = 0; i < times; ++i)
+    for (size_t i = 0; i < times; ++i)
     {
-        sum += kDelta;
+        sum = static_cast<int32_t>(static_cast<int64_t>(sum) + kDelta);
         y += ((z << 4) + key.key_a_) ^ (z + sum) ^ ((z >> 5) + key.key_b_);
         z += ((y << 4) + key.key_c_) ^ (y + sum) ^ ((y >> 5) + key.key_d_);
     }
-    
-    reinterpret_cast<int32_t*>(&temp)[0] = y;
-    reinterpret_cast<int32_t*>(&temp)[1] = z;
 
-    for(uint8_t i = 0; i < 8; ++i) result.get()[i] = reinterpret_cast<const byte*>(&temp)[i];
+    temp.y = y;
+    temp.z = z;
+
+    int64ToBytes(temp.value, result, 0);
 }
 
 /**
  * TEA解密
  * 解密固定的八个字节
- * 
+ *
  * @param   encryptContent  密文数据内容
- *                      
+ *
  * @param   offset          解密内容数据偏移
  *                          将对密文数据offset后的八个字节进行解密操作
- * 
+ *
  * @param   key             TEA加密密钥
- * 
+ *
  * @param   times           解密轮数，推荐32轮加密
- * 
+ *
  * @param   result          解密结果，需传入固定八字节的Bytes
 */
 static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key &key, const uint8_t &times, Bytes &result)
 {
-    uint64_t temp = *reinterpret_cast<const uint64_t *>(encryptContent.get() + offset);
-    
-    int32_t y = reinterpret_cast<int32_t*>(&temp)[0], 
-            z = reinterpret_cast<int32_t*>(&temp)[1], 
-            sum;
+    Int64ToInt32 temp;
+    temp.value = bytesToInt64(encryptContent, offset);
+
+    int32_t y = temp.y, z = temp.z, sum;
 
     if(times == 32)
         sum = 0xC6EF3720;///mDelta << 5;
@@ -211,36 +237,36 @@ static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key 
     else
         sum = kDelta * times;
 
-    for (uint8_t i = 0; i < times; ++i)
+    for (size_t i = 0; i < times; ++i)
     {
         z -= ((y << 4) + key.key_c_) ^ (y + sum) ^ ((y >> 5) + key.key_d_);
         y -= ((z << 4) + key.key_a_) ^ (z + sum) ^ ((z >> 5) + key.key_b_);
-        sum -= kDelta;
+        sum = static_cast<int32_t>(static_cast<int64_t>(sum) - kDelta);
     }
 
-    reinterpret_cast<int32_t*>(&temp)[0] = y;
-    reinterpret_cast<int32_t*>(&temp)[1] = z;
+    temp.y = y;
+    temp.z = z;
 
-    for(uint8_t i = 0; i < 8; ++i) result.get()[i] = reinterpret_cast<const byte*>(&temp)[i];
+    int64ToBytes(temp.value, result, 0);
 }
 
 /**
  * 对自由尺寸的字节集进行加密
  * 若加密的数据长度+1非八位对齐，将进行填充
- * 
+ *
  * @param   content     等待加密的数据
- * 
+ *
  * @param   key         加密密钥
- * 
+ *
  * @param   times       加密轮数，默认32轮加密
- * 
+ *
  * @return 返回加密后的密文数据，若加密失败则返回空Bytes
- * 
+ *
 */
-static Bytes encrypt(const Bytes &content, const Key &key, const uint8_t &times = 32)
+static Bytes encrypt(const Bytes &content, const Key &key, const uint32_t &times = 32)
 {
     if (!content) return Bytes();
-    
+
     size_t size = content.size();
 
     byte fill = 8 - size % 8;
@@ -258,22 +284,22 @@ static Bytes encrypt(const Bytes &content, const Key &key, const uint8_t &times 
         encrypt(encryptData, offset, key, times, temp);
         std::copy(temp.get(), temp.last(), encryptData.get() + offset);
     }
-    
+
     return encryptData;
 }
 
 /**
  * 对自由尺寸的字节集进行解密
- * 
+ *
  * @param   encryptContent      待解密的密文数据
- * 
+ *
  * @param   key                 TEA加密密钥
- * 
+ *
  * @param   times               TEA加密轮数，默认32轮加密
- * 
+ *
  * @return 返回解密后的明文数据，若解密失败则返回空Bytes
 */
-static Bytes decrpy(const Bytes &encryptContent, const Key &key, const uint8_t &times = 32)
+static Bytes decrpy(const Bytes &encryptContent, const Key &key, const uint32_t &times = 32)
 {
     if(!encryptContent || (encryptContent.size() % 8)) return Bytes();
 
@@ -291,10 +317,10 @@ static Bytes decrpy(const Bytes &encryptContent, const Key &key, const uint8_t &
             if(fill > 8) break;
 
             size_t decrpysize = encryptContent.size() - fill;
-            
+
             tempDecrypt.set(new byte[decrpysize], decrpysize);
-            
-            if(fill < 8) 
+
+            if(fill < 8)
             {
                 std::copy(temp.get() + fill, temp.last(), tempDecrypt.get() + writeOffset);
                 writeOffset += 8 - fill;
@@ -306,17 +332,17 @@ static Bytes decrpy(const Bytes &encryptContent, const Key &key, const uint8_t &
             writeOffset += 8;
         }
     }
-    
+
     return tempDecrypt;
 }
 
 /**
  * 辅助函数-取字符串哈希值
- * 
+ *
  * @param   data    c风格字符串
- * 
+ *
  * @param   len     字符串数据长度
- * 
+ *
  * @return  哈希值
 */
 static uint64_t hash(const char *data, size_t len)
@@ -331,17 +357,17 @@ static uint64_t hash(const char *data, size_t len)
  * 对字符串数据进行加密
  * 基于对自由尺寸的字节集进行解密
  * 带有hash验证，加密时将计算字符串的hash值，解密时比对hash
- * 
+ *
  * @param   content     待加密的数据内容
- * 
+ *
  * @param   key         TEA加密密钥
- * 
+ *
  * @param   times       TEA加密轮数
- * 
+ *
  * @return  返回加密后的密文数据，若加密失败则返回空Bytes
- * 
+ *
 */
-inline Bytes encrypt_string(const std::string &content, const Key &key, const uint8_t &times = 32)
+inline Bytes encrypt_string(const std::string &content, const Key &key, const uint32_t &times = 32)
 {
     //uint64_t hashValue = static_cast<uint64_t>(std::hash<std::string>()(content));
     uint64_t hashValue = hash(content.c_str(), content.length());
@@ -358,24 +384,33 @@ inline Bytes encrypt_string(const std::string &content, const Key &key, const ui
  * 解密数据为字符串
  * 基于对自由尺寸的字节集进行解密
  * 带有hash验证，加密时将计算字符串的hash值，解密时比对hash
- * 
+ *
  * @param   encryptContent      待解密的密文数据
- * 
+ *
  * @param   key                 TEA加密密钥
- * 
+ *
  * @param   times               TEA加密轮数，默认32轮加密
- * 
+ *
  * @return  返回解密后的字符串，若加密失败则返回空字符串
 */
-inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, const uint8_t &times = 32)
+inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, const uint32_t &times = 32, bool *status_flag = nullptr)
 {
     Bytes decrpy_data = decrpy(encryptContent, key, times);
-    if (decrpy_data.size() < 8) return std::string();
+    if (decrpy_data.size() < 8)
+    {
+        *status_flag = false;
+        return std::string();
+    }
 
     //校验Hash
     uint64_t hashValue = hash(reinterpret_cast<char*>(decrpy_data.get() + 8), decrpy_data.size() - 8);
-    if (hashValue != *reinterpret_cast<uint64_t*>(decrpy_data.get())) return std::string();
+    if (hashValue != *reinterpret_cast<uint64_t*>(decrpy_data.get()))
+    {
+        *status_flag = false;
+        return std::string();
+    }
 
+    *status_flag = true;
     return std::string(reinterpret_cast<const char*>(decrpy_data.get() + 8), decrpy_data.size() - 8);
 }
 
@@ -383,18 +418,18 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
 /**
  * 数据流加密
  * 将输入流加密，并将加密结果输出至加密结果输出流
- * 
+ *
  * @param   is      待加密的数据流
- *                  
+ *
  * @param   os      加密结果输出流
- * 
+ *
  * @param   key     TEA加密密钥
- * 
+ *
  * @param   times   加密轮数，默认32轮加密
- * 
+ *
  * @return  是否加密成功
 */
-static bool encrypt(std::istream &is, std::ostream &os, const Key &key, const uint8_t &times = 32)
+static bool encrypt(std::istream &is, std::ostream &os, const Key &key, const uint32_t &times = 32)
 {
     Bytes buffer(8);
     Bytes result_buffer(8);
@@ -433,18 +468,18 @@ static bool encrypt(std::istream &is, std::ostream &os, const Key &key, const ui
 /**
  * 数据流解密
  * 将输入流解密，并将解密结果输出至解密结果输出流
- * 
+ *
  * @param   is      待解密的数据流
- *                  
+ *
  * @param   os      解密结果输出流
- * 
+ *
  * @param   key     TEA加密密钥
- * 
+ *
  * @param   times   加密轮数，默认32轮加密
- * 
+ *
  * @return  是否解密成功
 */
-static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uint8_t &times = 32)
+static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uint32_t &times = 32)
 {
     Bytes buffer(8);
     Bytes result_buffer(8);
@@ -467,7 +502,7 @@ static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uin
             {
                 first_flag = false;
                 uint8_t fill = static_cast<uint8_t>(result_buffer.get()[0]);
-                
+
                 if(fill > 8) return false;
                 if(fill != 8) os.write(reinterpret_cast<char*>(result_buffer.get() + fill), 8 - fill);
             }
@@ -488,19 +523,19 @@ static void __teafile_ofstream_close(std::ofstream *os){ os->close(); }
 /**
  * 文件加密
  * 基于数据流加密
- * 
+ *
  * @param   in_file     待加密的文件路径
- * 
+ *
  * @param   out_file    加密结果输出的文件路径
- * 
+ *
  * @param   key         TEA加密密钥
- * 
+ *
  * @param   times       加密轮数，默认32轮加密
- * 
+ *
  * @return 是否加密成功
- * 
+ *
 */
-inline bool encrypt_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint8_t &times = 32)
+inline bool encrypt_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint32_t &times = 32)
 {
     std::ifstream en_ifs(in_file, std::ios::binary);
     std::ofstream en_ofs(out_file, std::ios::binary);
@@ -514,27 +549,27 @@ inline bool encrypt_file(const std::string &in_file, const std::string &out_file
 /**
  * 文件解密
  * 基于数据流解密
- * 
+ *
  * @param   in_file     待解密的文件路径
- * 
+ *
  * @param   out_file    解密结果输出的文件路径
- * 
+ *
  * @param   key         TEA加密密钥
- * 
+ *
  * @param   times       加密轮数，默认32轮加密
- * 
+ *
  * @return 是否解密成功
- * 
+ *
 */
-inline bool decrpy_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint8_t &times = 32)
+inline bool decrpy_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint32_t &times = 32)
 {
-    std::ifstream en_ifs(in_file, std::ios::binary);
-    std::ofstream en_ofs(out_file, std::ios::binary);
+    std::ifstream de_ifs(in_file, std::ios::binary);
+    std::ofstream de_ofs(out_file, std::ios::binary);
 
-    std::unique_ptr<std::ifstream, decltype(__teafile_ifstream_close)*> en_ifs_close(&en_ifs, &__teafile_ifstream_close);
-    std::unique_ptr<std::ofstream, decltype(__teafile_ofstream_close)*> en_ofs_close(&en_ofs, &__teafile_ofstream_close);
-    
-    return tea::decrpy(en_ifs, en_ofs, key, times);
+    std::unique_ptr<std::ifstream, decltype(__teafile_ifstream_close)*> en_ifs_close(&de_ifs, &__teafile_ifstream_close);
+    std::unique_ptr<std::ofstream, decltype(__teafile_ofstream_close)*> en_ofs_close(&de_ofs, &__teafile_ofstream_close);
+
+    return tea::decrpy(de_ifs, de_ofs, key, times);
 }
 
 }
