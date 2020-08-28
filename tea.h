@@ -116,33 +116,32 @@ constexpr int32_t kDelta = 0x9e3779b9;
 */
 struct Key
 {
-    Key(uint32_t key_a, uint32_t key_b, uint32_t key_c, uint32_t key_d)
-    : key_a_(key_a), key_b_(key_b), key_c_(key_c), key_d_(key_d) {}
+    struct Segment {
+        uint32_t a = 0;
+        uint32_t b = 0;
+        uint32_t c = 0;
+        uint32_t d = 0;
+    };
+
+    Key(const Segment &keyseg) : seg(keyseg) {}
 
     Key(const byte (&key)[16])
     {
-        key_a_ = reinterpret_cast<const int32_t*>(key)[0];
-        key_b_ = reinterpret_cast<const int32_t*>(key)[1];
-        key_c_ = reinterpret_cast<const int32_t*>(key)[2];
-        key_d_ = reinterpret_cast<const int32_t*>(key)[3];
+        seg = *reinterpret_cast<const Segment*>(key);
     }
 
     Key(const std::string &key)
     {
-        key_a_ = key_b_ = key_c_ = key_d_ = 0;
         for (char ch : key)
         {
-            key_a_ = key_a_ * 7 +  static_cast<uint8_t>(ch);
-            key_b_ = key_b_ * 15 + static_cast<uint8_t>(ch);
-            key_c_ = key_c_ * 31 + static_cast<uint8_t>(ch);
-            key_d_ = key_d_ * 63 + static_cast<uint8_t>(ch);
+            seg.a = seg.a * 7 +  static_cast<uint8_t>(ch);
+            seg.b = seg.b * 15 + static_cast<uint8_t>(ch);
+            seg.c = seg.c * 31 + static_cast<uint8_t>(ch);
+            seg.d = seg.d * 63 + static_cast<uint8_t>(ch);
         }
     }
 
-    uint32_t key_a_;
-    uint32_t key_b_;
-    uint32_t key_c_;
-    uint32_t key_d_;
+    Segment seg;
 };
 
 inline uint64_t bytesToInt64(const Bytes &bytes, const size_t &offset)
@@ -198,8 +197,8 @@ static void encrypt(const Bytes &content, const size_t &offset, const Key &key, 
     for (size_t i = 0; i < times; ++i)
     {
         sum = static_cast<int32_t>(static_cast<int64_t>(sum) + kDelta);
-        y += ((z << 4) + key.key_a_) ^ (z + sum) ^ ((z >> 5) + key.key_b_);
-        z += ((y << 4) + key.key_c_) ^ (y + sum) ^ ((y >> 5) + key.key_d_);
+        y += ((z << 4) + key.seg.a) ^ (z + sum) ^ ((z >> 5) + key.seg.b);
+        z += ((y << 4) + key.seg.c) ^ (y + sum) ^ ((y >> 5) + key.seg.d);
     }
 
     temp.y = y;
@@ -239,8 +238,8 @@ static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key 
 
     for (size_t i = 0; i < times; ++i)
     {
-        z -= ((y << 4) + key.key_c_) ^ (y + sum) ^ ((y >> 5) + key.key_d_);
-        y -= ((z << 4) + key.key_a_) ^ (z + sum) ^ ((z >> 5) + key.key_b_);
+        z -= ((y << 4) + key.seg.c) ^ (y + sum) ^ ((y >> 5) + key.seg.d);
+        y -= ((z << 4) + key.seg.a) ^ (z + sum) ^ ((z >> 5) + key.seg.b);
         sum = static_cast<int32_t>(static_cast<int64_t>(sum) - kDelta);
     }
 
