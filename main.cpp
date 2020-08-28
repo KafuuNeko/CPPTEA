@@ -35,8 +35,9 @@ int main()
     std::string de_result = tea::decrpy_string(en_result, key, 16);
     std::cout << de_result << std::endl;
 
-    tea::encrypt_file("C:\\Users\\root\\Desktop\\Fmm.jpg", "C:\\Users\\root\\Desktop\\Fmm.jpg.tea", key);
-    tea::decrpy_file("C:\\Users\\root\\Desktop\\Fmm.jpg.tea", "C:\\Users\\root\\Desktop\\Fmm.jpg.dec.jpg", key);
+    std::cout << (tea::encrypt_file("F:\\Test\\T.txt", "F:\\Test\\T.txt.enc", key)?"success":"faild") << std::endl;
+    std::cout << (tea::decrpy_file("F:\\Test\\T.txt.enc", "F:\\Test\\T2.txt", key)?"success":"faild") << std::endl;
+    
 
     }
 

@@ -19,19 +19,22 @@ namespace tea
 
 template<class T>
 class basic_memory {
-    T **ptr_;
-    size_t *size_;
-    size_t *use_;
+    T       **ptr_;
+    size_t  *size_;
+    size_t  *use_;
+    bool    *release_;
 
     void free()
     {
-        if( ptr_ && use_ && --(*use_) == 0)
+        if( ptr_ && use_ && release_ && --(*use_) == 0)
         {
-            delete[] *ptr_;
+            if(*release_) delete[] *ptr_;
 
+            delete release_;
             delete size_;
             delete use_;
             delete ptr_;
+
 
             use_ = nullptr, ptr_ = nullptr, size_ = nullptr;
         }
@@ -40,8 +43,8 @@ public:
     ~basic_memory() { free(); }
 
     /* 普通构造函数 */
-    basic_memory(T *ptr, size_t size)
-        : ptr_(new T*(ptr)), size_(new size_t(size)), use_(new size_t(1)) {}
+    basic_memory(T *ptr, size_t size, bool release = true)
+        : ptr_(new T*(ptr)), size_(new size_t(size)), use_(new size_t(1)), release_(new bool(release)) {}
 
     basic_memory()
         : basic_memory(nullptr, 0) {}
@@ -54,23 +57,24 @@ public:
 
     /* 拷贝操作 */
     basic_memory(const basic_memory &rhs)
-        : ptr_(rhs.ptr_), size_(rhs.size_), use_(rhs.use_) { if(use_) ++(*use_); }
+        : ptr_(rhs.ptr_), size_(rhs.size_), use_(rhs.use_), release_(rhs.release_) { if(use_) ++(*use_); }
 
     basic_memory &operator=(const basic_memory &rhs)
     {
         if(rhs.use_) ++(*rhs.use_);
         free();
 
-        ptr_ = rhs.ptr_;
-        size_ = rhs.size_;
-        use_ = rhs.use_;
+        ptr_        = rhs.ptr_;
+        size_       = rhs.size_;
+        use_        = rhs.use_;
+        release_    = rhs.release_;
 
         return *this;
     }
 
     /* 移动操作 */
     basic_memory(basic_memory &&rhs) noexcept
-        : ptr_(rhs.ptr_), size_(rhs.size_), use_(rhs.use_) { rhs.ptr_ = nullptr, rhs.size_ = nullptr, rhs.use_ = nullptr; }
+        : ptr_(rhs.ptr_), size_(rhs.size_), use_(rhs.use_), release_(rhs.release_) { rhs.ptr_ = nullptr, rhs.size_ = nullptr, rhs.use_ = nullptr, rhs.release_ = nullptr; }
 
     basic_memory &operator=(basic_memory &&rhs) noexcept
     {
@@ -78,11 +82,12 @@ public:
         {
             free();
 
-            ptr_ = rhs.ptr_;
-            size_ = rhs.size_;
-            use_ = rhs.use_;
+            ptr_        = rhs.ptr_;
+            size_       = rhs.size_;
+            use_        = rhs.use_;
+            release_    = rhs.release_;
 
-            rhs.ptr_ = nullptr, rhs.size_ = nullptr, rhs.use_ = nullptr;
+            rhs.ptr_ = nullptr, rhs.size_ = nullptr, rhs.use_ = nullptr, rhs.release_ = nullptr;
         }
 
         return *this;
@@ -106,7 +111,7 @@ public:
 
 };
 
-using byte = uint8_t;
+using byte  = uint8_t;
 using Bytes = basic_memory<byte>;
 
 constexpr int32_t kDelta = 0x9e3779b9;
@@ -164,12 +169,10 @@ inline void int64ToBytes(const uint64_t &value, const Bytes &bytes, const size_t
     }
 }
 
-union Int64ToInt32{
+union Int64ToInt32
+{
     uint64_t value;
-    struct {
-        uint32_t y;
-        uint32_t z;
-    };
+    struct { uint32_t y; uint32_t z;};
 };
 
 /**
@@ -397,7 +400,7 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
     Bytes decrpy_data = decrpy(encryptContent, key, times);
     if (decrpy_data.size() < 8)
     {
-        *status_flag = false;
+        if(status_flag) *status_flag = false;
         return std::string();
     }
 
@@ -405,7 +408,7 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
     uint64_t hashValue = hash(reinterpret_cast<char*>(decrpy_data.get() + 8), decrpy_data.size() - 8);
     if (hashValue != *reinterpret_cast<uint64_t*>(decrpy_data.get()))
     {
-        *status_flag = false;
+        if(status_flag) *status_flag = false;
         return std::string();
     }
 
@@ -418,26 +421,24 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
  * 数据流加密
  * 将输入流加密，并将加密结果输出至加密结果输出流
  *
- * @param   is      待加密的数据流
+ * @param   is              待加密的数据流
  *
- * @param   os      加密结果输出流
+ * @param   os              加密结果输出流
+ * 
+ * @param   instream_size   数据流大小
  *
- * @param   key     TEA加密密钥
+ * @param   key             TEA加密密钥
  *
- * @param   times   加密轮数，默认32轮加密
+ * @param   times           加密轮数，默认32轮加密
  *
  * @return  是否加密成功
 */
-static bool encrypt(std::istream &is, std::ostream &os, const Key &key, const uint32_t &times = 32)
+static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, const Key &key, const uint32_t &times = 32)
 {
     Bytes buffer(8);
     Bytes result_buffer(8);
 
-    is.seekg(std::istream::end);
-    auto file_size = is.tellg();
-    is.seekg(std::istream::beg);
-
-    uint8_t fill_size = 8 - file_size % 8;
+    uint8_t fill_size = 8 - instream_size % 8;
     uint8_t buffer_index = fill_size;
 
     buffer.get()[0] = static_cast<byte>(fill_size);
@@ -449,7 +450,7 @@ static bool encrypt(std::istream &is, std::ostream &os, const Key &key, const ui
     }
 
     char read_byte;
-    while(is.read(&read_byte, 1))
+    while(instream_size-- && is.read(&read_byte, 1))
     {
         buffer.get()[buffer_index++] = read_byte;
         if(buffer_index == 8)
@@ -502,8 +503,11 @@ static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uin
                 first_flag = false;
                 uint8_t fill = static_cast<uint8_t>(result_buffer.get()[0]);
 
-                if(fill > 8) return false;
-                if(fill != 8) os.write(reinterpret_cast<char*>(result_buffer.get() + fill), 8 - fill);
+                if(fill > 8) 
+                    return false;
+
+                if(fill != 8) 
+                    os.write(reinterpret_cast<char*>(result_buffer.get() + fill), 8 - fill);
             }
             else
             {
@@ -539,10 +543,19 @@ inline bool encrypt_file(const std::string &in_file, const std::string &out_file
     std::ifstream en_ifs(in_file, std::ios::binary);
     std::ofstream en_ofs(out_file, std::ios::binary);
 
+    size_t file_size = 0;
+    
+    //获取文件大小
+    char tempch;
+    while(en_ifs.read(&tempch, 1)) ++file_size;
+
+    en_ifs.clear(std::ios::eofbit);
+    en_ifs.seekg(std::ios::beg);
+
     std::unique_ptr<std::ifstream, decltype(__teafile_ifstream_close)*> en_ifs_close(&en_ifs, &__teafile_ifstream_close);
     std::unique_ptr<std::ofstream, decltype(__teafile_ofstream_close)*> en_ofs_close(&en_ofs, &__teafile_ofstream_close);
 
-    return tea::encrypt(en_ifs, en_ofs, key, times);
+    return tea::encrypt(en_ifs, en_ofs, file_size, key, times);
 }
 
 /**
