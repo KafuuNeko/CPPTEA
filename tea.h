@@ -410,7 +410,7 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
         return std::string();
     }
 
-    *status_flag = true;
+    if(status_flag) *status_flag = true;
     return std::string(reinterpret_cast<const char*>(decrpy_data.get() + 8), decrpy_data.size() - 8);
 }
 
