@@ -450,8 +450,9 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
     }
 
     char read_byte;
-    while(instream_size-- && is.read(&read_byte, 1))
+    while(instream_size && is.read(&read_byte, 1))
     {
+        --instream_size;
         buffer.get()[buffer_index++] = read_byte;
         if(buffer_index == 8)
         {
@@ -460,8 +461,8 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
             os.write(reinterpret_cast<char*>(result_buffer.get()), 8);
         }
     }
-
-    return buffer_index == 0;
+    
+    return (instream_size == 0) && (buffer_index == 0);
 }
 
 
