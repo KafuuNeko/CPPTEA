@@ -188,7 +188,7 @@ union Int64ToInt32{
  *
  * @param   result      加密结果，需传入固定八字节的Bytes
 */
-static void encrypt(const Bytes &content, const size_t &offset, const Key &key, const uint8_t &times, Bytes &result)
+static void encrypt(const Bytes &content, const size_t &offset, const Key &key, const uint32_t &times, Bytes &result)
 {
     Int64ToInt32 temp;
     temp.value = bytesToInt64(content, offset);
@@ -223,7 +223,7 @@ static void encrypt(const Bytes &content, const size_t &offset, const Key &key, 
  *
  * @param   result          解密结果，需传入固定八字节的Bytes
 */
-static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key &key, const uint8_t &times, Bytes &result)
+static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key &key, const uint32_t &times, Bytes &result)
 {
     Int64ToInt32 temp;
     temp.value = bytesToInt64(encryptContent, offset);
