@@ -99,7 +99,7 @@ public:
 
     T *last() const { return *ptr_?(*ptr_ + size()):nullptr; }
 
-    void reset() { *ptr_ = nullptr, *size_ = 0; }
+    void reset() { *ptr_ = nullptr, *size_ = 0, *release_ = false; }
 
     void set(T *ptr, size_t size, bool release = true) { *ptr_ = ptr, *size_ = size, *release_ = release; }
 
@@ -424,7 +424,7 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
  * @param   is              待加密的数据流
  *
  * @param   os              加密结果输出流
- * 
+ *
  * @param   instream_size   数据流大小
  *
  * @param   key             TEA加密密钥
@@ -461,7 +461,7 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
             os.write(reinterpret_cast<char*>(result_buffer.get()), 8);
         }
     }
-    
+
     return (instream_size == 0) && (buffer_index == 0);
 }
 
@@ -504,10 +504,10 @@ static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uin
                 first_flag = false;
                 uint8_t fill = static_cast<uint8_t>(result_buffer.get()[0]);
 
-                if(fill > 8) 
+                if(fill > 8)
                     return false;
 
-                if(fill != 8) 
+                if(fill != 8)
                     os.write(reinterpret_cast<char*>(result_buffer.get() + fill), 8 - fill);
             }
             else
@@ -545,7 +545,7 @@ inline bool encrypt_file(const std::string &in_file, const std::string &out_file
     std::ofstream en_ofs(out_file, std::ios::binary);
 
     size_t file_size = 0;
-    
+
     //获取文件大小
     char tempch;
     while(en_ifs.read(&tempch, 1)) ++file_size;
