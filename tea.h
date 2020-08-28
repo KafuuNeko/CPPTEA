@@ -101,7 +101,7 @@ public:
 
     void reset() { *ptr_ = nullptr, *size_ = 0; }
 
-    void set(T *ptr, size_t size) { *ptr_ = ptr, *size_ = size; }
+    void set(T *ptr, size_t size, bool release = true) { *ptr_ = ptr, *size_ = size, *release_ = release; }
 
     size_t use() const { return *use_; }
 
