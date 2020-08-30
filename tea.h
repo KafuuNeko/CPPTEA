@@ -152,28 +152,16 @@ struct Key
 inline uint64_t bytesToInt64(const Bytes &bytes, const size_t &offset)
 {
     uint64_t result = 0;
-
-    for(size_t i = 0; i < 8; ++i)
-    {
-        result = (result << 8) + bytes.get()[offset + i];
-    }
-
+    for(size_t i = 0; i < 8; ++i) result = (result << 8) + bytes.get()[offset + i];
     return result;
 }
 
 inline void int64ToBytes(const uint64_t &value, const Bytes &bytes, const size_t &offset)
 {
-    for(size_t i = 0; i < 8; ++i)
-    {
-        bytes.get()[offset + 7 - i] = (value >> 8 * i) & 0xFF;
-    }
+    for(size_t i = 0; i < 8; ++i) bytes.get()[offset + 7 - i] = (value >> 8 * i) & 0xFF;
 }
 
-union Int64ToInt32
-{
-    uint64_t value;
-    struct { uint32_t y; uint32_t z;};
-};
+union Int64ToInt32 { uint64_t value; struct { uint32_t y; uint32_t z;}; };
 
 /**
  * TEA加密
@@ -371,11 +359,11 @@ static uint64_t hash(const char *data, size_t len)
 */
 inline Bytes encrypt_string(const std::string &content, const Key &key, const uint32_t &times = 32)
 {
-    //uint64_t hashValue = static_cast<uint64_t>(std::hash<std::string>()(content));
     uint64_t hashValue = hash(content.c_str(), content.length());
 
     Bytes encrypt_bytes(content.length() + 8);
-    std::copy(reinterpret_cast<byte*>(&hashValue), reinterpret_cast<byte*>(&hashValue) + 8, encrypt_bytes.get());
+
+    int64ToBytes(hashValue, encrypt_bytes, 0);
     std::copy(content.begin(), content.end(), encrypt_bytes.get() + 8);
 
     auto result = encrypt(encrypt_bytes, key, times);
@@ -403,10 +391,11 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
         if(status_flag) *status_flag = false;
         return std::string();
     }
-
+    
     //校验Hash
     uint64_t hashValue = hash(reinterpret_cast<char*>(decrpy_data.get() + 8), decrpy_data.size() - 8);
-    if (hashValue != *reinterpret_cast<uint64_t*>(decrpy_data.get()))
+    
+    if (hashValue != bytesToInt64(decrpy_data, 0))
     {
         if(status_flag) *status_flag = false;
         return std::string();
