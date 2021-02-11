@@ -150,14 +150,14 @@ struct Key
     Segment seg;
 };
 
-inline uint64_t bytesToInt64(const Bytes &bytes, const size_t &offset)
+inline uint64_t bytesToInt64(const Bytes &bytes, size_t offset)
 {
     uint64_t result = 0;
     for(size_t i = 0; i < 8; ++i) result = (result << 8) + bytes.get()[offset + i];
     return result;
 }
 
-inline void int64ToBytes(const uint64_t &value, const Bytes &bytes, const size_t &offset)
+inline void int64ToBytes(uint64_t value, const Bytes &bytes, size_t offset)
 {
     for(size_t i = 0; i < 8; ++i) bytes.get()[offset + 7 - i] = (value >> 8 * i) & 0xFF;
 }
@@ -179,7 +179,7 @@ union Int64ToInt32 { uint64_t value; struct { uint32_t y; uint32_t z;}; };
  *
  * @param   result      加密结果，需传入固定八字节的Bytes
 */
-static void encrypt(const Bytes &content, const size_t &offset, const Key &key, const uint32_t &times, Bytes &result)
+static void encrypt(const Bytes &content, size_t offset, const Key &key, uint32_t times, Bytes &result)
 {
     Int64ToInt32 temp;
     temp.value = bytesToInt64(content, offset);
@@ -214,7 +214,7 @@ static void encrypt(const Bytes &content, const size_t &offset, const Key &key, 
  *
  * @param   result          解密结果，需传入固定八字节的Bytes
 */
-static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key &key, const uint32_t &times, Bytes &result)
+static void decrpy(const Bytes &encryptContent, size_t offset, const Key &key, uint32_t times, Bytes &result)
 {
     Int64ToInt32 temp;
     temp.value = bytesToInt64(encryptContent, offset);
@@ -254,7 +254,7 @@ static void decrpy(const Bytes &encryptContent, const size_t &offset, const Key 
  * @return 返回加密后的密文数据，若加密失败则返回空Bytes
  *
 */
-static Bytes encrypt(const Bytes &content, const Key &key, const uint32_t &times = 32)
+static Bytes encrypt(const Bytes &content, const Key &key, uint32_t times = 32)
 {
     if (!content) return Bytes();
 
@@ -290,7 +290,7 @@ static Bytes encrypt(const Bytes &content, const Key &key, const uint32_t &times
  *
  * @return 返回解密后的明文数据，若解密失败则返回空Bytes
 */
-static Bytes decrpy(const Bytes &encryptContent, const Key &key, const uint32_t &times = 32)
+static Bytes decrpy(const Bytes &encryptContent, const Key &key, uint32_t times = 32)
 {
     if(!encryptContent || (encryptContent.size() % 8)) return Bytes();
 
@@ -358,7 +358,7 @@ static uint64_t hash(const char *data, size_t len)
  * @return  返回加密后的密文数据，若加密失败则返回空Bytes
  *
 */
-inline Bytes encrypt_string(const std::string &content, const Key &key, const uint32_t &times = 32)
+inline Bytes encrypt_string(const std::string &content, const Key &key, uint32_t times = 32)
 {
     uint64_t hashValue = hash(content.c_str(), content.length());
 
@@ -384,7 +384,7 @@ inline Bytes encrypt_string(const std::string &content, const Key &key, const ui
  *
  * @return  返回解密后的字符串，若加密失败则返回空字符串
 */
-inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, const uint32_t &times = 32, bool *status_flag = nullptr)
+inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, uint32_t times = 32, bool *status_flag = nullptr)
 {
     Bytes decrpy_data = decrpy(encryptContent, key, times);
     if (decrpy_data.size() < 8)
@@ -423,7 +423,7 @@ inline std::string decrpy_string(const Bytes &encryptContent, const Key &key, co
  *
  * @return  是否加密成功
 */
-static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, const Key &key, const uint32_t &times = 32)
+static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, const Key &key, uint32_t times = 32)
 {
     Bytes buffer(8);
     Bytes result_buffer(8);
@@ -470,7 +470,7 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
  *
  * @return  是否解密成功
 */
-static bool decrpy(std::istream &is, std::ostream &os, const Key &key, const uint32_t &times = 32)
+static bool decrpy(std::istream &is, std::ostream &os, const Key &key, uint32_t times = 32)
 {
     Bytes buffer(8);
     Bytes result_buffer(8);
@@ -529,7 +529,7 @@ static void __teafile_ofstream_close(std::ofstream *os){ os->close(); }
  * @return 是否加密成功
  *
 */
-inline bool encrypt_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint32_t &times = 32)
+inline bool encrypt_file(const std::string &in_file, const std::string &out_file, const Key &key, uint32_t times = 32)
 {
     std::ifstream en_ifs(in_file, std::ios::binary);
     std::ofstream en_ofs(out_file, std::ios::binary);
@@ -564,7 +564,7 @@ inline bool encrypt_file(const std::string &in_file, const std::string &out_file
  * @return 是否解密成功
  *
 */
-inline bool decrpy_file(const std::string &in_file, const std::string &out_file, const Key &key, const uint32_t &times = 32)
+inline bool decrpy_file(const std::string &in_file, const std::string &out_file, const Key &key, uint32_t times = 32)
 {
     std::ifstream de_ifs(in_file, std::ios::binary);
     std::ofstream de_ofs(out_file, std::ios::binary);
