@@ -137,13 +137,14 @@ struct Key
 
     Key(const std::string &key)
     {
-        for (char ch : key)
-        {
-            seg.a = seg.a * 7 +  static_cast<uint8_t>(ch);
-            seg.b = seg.b * 15 + static_cast<uint8_t>(ch);
-            seg.c = seg.c * 31 + static_cast<uint8_t>(ch);
-            seg.d = seg.d * 63 + static_cast<uint8_t>(ch);
-        }
+        uint64_t ab = static_cast<uint64_t>(std::hash<std::string>{}(key));
+        uint64_t cd = static_cast<uint64_t>(std::hash<std::string>{}(std::string(key.rbegin(), key.rend())));
+
+        seg.a = ab >> 32;
+        seg.b = ab & 0xFFFFFFFF;
+
+        seg.c = cd >> 32;
+        seg.d = cd & 0xFFFFFFFF;
     }
 
     Segment seg;
