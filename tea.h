@@ -24,7 +24,7 @@ class basic_memory {
     size_t  *use_;
     bool    *release_;
 
-    void free()
+    void free() noexcept
     {
         if( ptr_ && use_ && release_ && --(*use_) == 0)
         {
@@ -40,7 +40,7 @@ class basic_memory {
         }
     }
 public:
-    ~basic_memory() { free(); }
+    ~basic_memory() noexcept { free(); }
 
     /* 普通构造函数 */
     basic_memory(T *ptr, size_t size, bool release = true)
@@ -95,17 +95,19 @@ public:
 
     operator bool() const { return *ptr_; }
 
-    T *get() const { return *ptr_; }
+    T &operator[](size_t index) const { return *(this->get()+index); }
 
-    T *last() const { return *ptr_?(*ptr_ + size()):nullptr; }
+    T *get() const noexcept  { return *ptr_; }
 
-    void reset() { *ptr_ = nullptr, *size_ = 0, *release_ = false; }
+    T *last() const noexcept  { return *ptr_?(*ptr_ + size()):nullptr; }
 
-    void set(T *ptr, size_t size, bool release = true) { *ptr_ = ptr, *size_ = size, *release_ = release; }
+    void reset() noexcept { *ptr_ = nullptr, *size_ = 0, *release_ = false; }
 
-    size_t use() const { return *use_; }
+    void set(T *ptr, size_t size, bool release = true) noexcept { *ptr_ = ptr, *size_ = size, *release_ = release; }
 
-    size_t size() const { return *size_; }
+    size_t use() const noexcept  { return *use_; }
+
+    size_t size() const noexcept  { return *size_; }
 
     void fill(const T &data) { if(*ptr_) std::fill(*ptr_, (*ptr_) + (*size_), data); }
 
@@ -153,13 +155,13 @@ struct Key
 inline uint64_t bytesToInt64(const Bytes &bytes, size_t offset)
 {
     uint64_t result = 0;
-    for(size_t i = 0; i < 8; ++i) result = (result << 8) + bytes.get()[offset + i];
+    for(size_t i = 0; i < 8; ++i) result = (result << 8) + bytes[offset + i];
     return result;
 }
 
 inline void int64ToBytes(uint64_t value, const Bytes &bytes, size_t offset)
 {
-    for(size_t i = 0; i < 8; ++i) bytes.get()[offset + 7 - i] = (value >> 8 * i) & 0xFF;
+    for(size_t i = 0; i < 8; ++i) bytes[offset + 7 - i] = (value >> 8 * i) & 0xFF;
 }
 
 union Int64ToInt32 { uint64_t value; struct { uint32_t y; uint32_t z;}; };
@@ -265,7 +267,7 @@ static Bytes encrypt(const Bytes &content, const Key &key, uint32_t times = 32)
 
     if(!encryptData) return Bytes();
 
-    encryptData.get()[0] = fill;
+    encryptData[0] = fill;
 
     std::copy(content.get(), content.last(), encryptData.get() + fill);
 
@@ -304,7 +306,7 @@ static Bytes decrpy(const Bytes &encryptContent, const Key &key, uint32_t times 
         decrpy(encryptContent, offset, key, times, temp);
         if (offset == 0)
         {
-            uint8_t fill = temp.get()[0];
+            uint8_t fill = temp[0];
             if(fill > 8) break;
 
             size_t decrpysize = encryptContent.size() - fill;
@@ -431,7 +433,7 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
     uint8_t fill_size = 8 - instream_size % 8;
     uint8_t buffer_index = fill_size;
 
-    buffer.get()[0] = static_cast<byte>(fill_size);
+    buffer[0] = static_cast<byte>(fill_size);
     if(buffer_index == 8)
     {
         buffer_index = 0;
@@ -443,7 +445,7 @@ static bool encrypt(std::istream &is, std::ostream &os, size_t instream_size, co
     while(instream_size && is.read(&read_byte, 1))
     {
         --instream_size;
-        buffer.get()[buffer_index++] = read_byte;
+        buffer[buffer_index++] = read_byte;
         if(buffer_index == 8)
         {
             buffer_index = 0;
@@ -482,7 +484,7 @@ static bool decrpy(std::istream &is, std::ostream &os, const Key &key, uint32_t 
     char read_byte;
     while(is.read(&read_byte, 1))
     {
-        buffer.get()[buffer_index++] = read_byte;
+        buffer[buffer_index++] = read_byte;
         if (buffer_index == 8)
         {
             buffer_index = 0;
@@ -492,7 +494,7 @@ static bool decrpy(std::istream &is, std::ostream &os, const Key &key, uint32_t 
             if (first_flag)
             {
                 first_flag = false;
-                uint8_t fill = static_cast<uint8_t>(result_buffer.get()[0]);
+                uint8_t fill = static_cast<uint8_t>(result_buffer[0]);
 
                 if(fill > 8)
                     return false;
