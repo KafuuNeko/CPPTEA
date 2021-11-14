@@ -13,6 +13,7 @@
 #include <string>
 #include <fstream>
 #include <memory>
+#include <numeric>
 
 namespace tea
 {
@@ -139,14 +140,17 @@ struct Key
 
     Key(const std::string &key)
     {
-        uint64_t ab = static_cast<uint64_t>(std::hash<std::string>{}(key));
-        uint64_t cd = static_cast<uint64_t>(std::hash<std::string>{}(std::string(key.rbegin(), key.rend())));
+        auto hashop = [](auto pre, auto now){ return pre * 31 + now; };
 
-        seg.a = ab >> 32;
-        seg.b = ab & 0xFFFFFFFF;
+        auto phash = std::accumulate(key.cbegin(), key.cend(), static_cast<uint64_t>(0), hashop);
+        auto rhash = std::accumulate(key.crbegin(), key.crend(), static_cast<uint64_t>(0), hashop);
 
-        seg.c = cd >> 32;
-        seg.d = cd & 0xFFFFFFFF;
+        seg.a = phash >> 32;
+        seg.c = phash & 0xFFFFFFFF;
+
+        seg.b = rhash >> 32;
+        seg.d = rhash & 0xFFFFFFFF;
+        
     }
 
     Segment seg;
@@ -183,7 +187,7 @@ union Int64ToInt32 { uint64_t value; struct { uint32_t y; uint32_t z;}; };
 */
 static void encrypt(const Bytes &content, size_t offset, const Key &key, uint32_t times, Bytes &result)
 {
-    Int64ToInt32 temp;
+    Int64ToInt32 temp { };
     temp.value = bytesToInt64(content, offset);
 
     int32_t y = temp.y, z = temp.z, sum = 0;
@@ -218,7 +222,7 @@ static void encrypt(const Bytes &content, size_t offset, const Key &key, uint32_
 */
 static void decrpy(const Bytes &encryptContent, size_t offset, const Key &key, uint32_t times, Bytes &result)
 {
-    Int64ToInt32 temp;
+    Int64ToInt32 temp { };
     temp.value = bytesToInt64(encryptContent, offset);
 
     int32_t y = temp.y, z = temp.z, sum;

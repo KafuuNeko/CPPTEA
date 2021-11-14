@@ -53,6 +53,9 @@
         "xstddef": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "compare": "cpp",
+        "iterator": "cpp",
+        "numeric": "cpp"
     }
 }
